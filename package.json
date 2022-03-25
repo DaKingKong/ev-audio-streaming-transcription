@@ -1,0 +1,23 @@
+{
+  "name": "ev-audio-streaming-transcription",
+  "version": "1.0.0",
+  "description": "Quick test package for RingCenTral Engage Voice Audio Streaming feature",
+  "main": "index.js",
+  "keywords": ["Engage Voice", "Real-time Transcription"],
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaKingKong/ev-audio-streaming-transcription.git"
+  },
+  "author": "Da Kong",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DaKingKong/ev-audio-streaming-transcription/issues"
+  },
+  "homepage": "https://github.com/DaKingKong/ev-audio-streaming-transcription#readme",
+  "dependencies": {
+    "@google-cloud/speech": "^4.10.0",
+    "localtunnel": "^2.0.2",
+    "ws": "^8.5.0"
+  }
+}
