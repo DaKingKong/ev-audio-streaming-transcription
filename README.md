@@ -29,6 +29,8 @@ const { default: runServer } = require('ev-audio-streaming-transcription');
 runServer({keyFilePath});
 ```
 
+And then run `node server.js`.
+
 3. Using 2 web tunnels (ngrok + localtunnel)
 
     - Install:

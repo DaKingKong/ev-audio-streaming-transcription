@@ -1,6 +1,6 @@
 {
   "name": "ev-audio-streaming-transcription",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Quick test package for RingCenTral Engage Voice Audio Streaming feature",
   "main": "index.js",
   "keywords": [
