@@ -1,0 +1,73 @@
+<head>
+    <link rel="stylesheet" href="style">
+</head>
+
+<body>
+    <div id="left-half">
+        <div id="agent-title">Agent</div>
+        <div id="agent-content"></div>
+    </div>
+    <div class="vl"></div>
+    <div id="right-half">
+        <div id="conference-title">Customer</div>
+        <div id="conference-content"></div>
+    </div>
+</body>
+
+<script type="text/javascript">
+    var agentContent = document.getElementById('agent-content');
+    var conferenceContent = document.getElementById('conference-content');
+    var agentTranscriptions = [];
+    var conferenceTranscriptions = [];
+    var socket = new WebSocket('ws://localhost:3335');
+    socket.onopen = function () {
+        socket.send('client connection established.');
+    };
+
+    socket.onmessage = function (message) {
+        var agentTempTranscription = null;
+        var conferenceTempTranscription = null;
+        message.data.text()
+            .then(
+                textData => {
+                    var data = JSON.parse(textData);
+                    switch (data.channel) {
+                        case 'agent':
+                            if (data.isFinal) {
+                                agentTranscriptions.push(data.transcription);
+                            }
+                            else {
+                                agentTempTranscription = data.transcription;
+                            }
+                            break;
+                        case 'conference':
+                            if (data.isFinal) {
+                                conferenceTranscriptions.push(data.transcription);
+                            }
+                            else {
+                                conferenceTempTranscription = data.transcription;
+                            }
+                            break;
+                    }
+
+                    concatTranscriptions(agentContent, agentTranscriptions, agentTempTranscription);
+                    concatTranscriptions(conferenceContent, conferenceTranscriptions, conferenceTempTranscription);
+                }
+            );
+    };
+
+    socket.onerror = function (error) {
+        console.log('WebSocket error: ' + error);
+    };
+
+    function concatTranscriptions(content, transcriptions, tempTranscription) {
+        var result = '';
+        for (const t of transcriptions) {
+            result += t + '<br />'
+        }
+        if (tempTranscription) {
+            result += tempTranscription + '<br />'
+        }
+        content.innerHTML = result;
+    }
+</script>
