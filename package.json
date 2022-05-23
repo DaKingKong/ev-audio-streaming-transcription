@@ -1,6 +1,6 @@
 {
   "name": "ev-audio-streaming-transcription",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Quick test package for RingCenTral Engage Voice Audio Streaming feature",
   "main": "index.js",
   "keywords": [
@@ -20,7 +20,9 @@
   "homepage": "https://github.com/DaKingKong/ev-audio-streaming-transcription#readme",
   "dependencies": {
     "@google-cloud/speech": "^4.10.0",
-    "express": "^4.17.3",
+    "express": "^4.18.1",
+    "http": "0.0.1-security",
+    "ngrok": "^4.3.1",
     "ws": "^8.5.0"
   }
 }

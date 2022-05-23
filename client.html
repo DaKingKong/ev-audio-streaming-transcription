@@ -1,5 +1,49 @@
 <head>
-    <link rel="stylesheet" href="style">
+    <style>
+        #left-half {
+            position: absolute;
+            left: 0px;
+            width: 49%;
+        }
+
+        #right-half {
+            position: absolute;
+            right: 0px;
+            width: 49%;
+        }
+
+        #agent-title {
+            color: #757575;
+            text-align: center;
+            font-size: xx-large;
+        }
+
+        #conference-title {
+            color: #757575;
+            text-align: center;
+            font-size: xx-large;
+        }
+
+        #agent-content {
+            font-size: larger;
+            color: #000000;
+            padding-left: 10px;
+        }
+
+        #conference-content {
+            font-size: larger;
+            color: #000000;
+        }
+
+        .vl {
+            border-left: 2px solid #757575;
+            height: 100%;
+            position: absolute;
+            left: 50%;
+            margin-left: -3px;
+            top: 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -19,9 +63,11 @@
     var conferenceContent = document.getElementById('conference-content');
     var agentTranscriptions = [];
     var conferenceTranscriptions = [];
-    var socket = new WebSocket('ws://localhost:3335');
+    var socket = new WebSocket("[wsServerUrl]");
+    console.log(`WebSocket connecting...`);
     socket.onopen = function () {
         socket.send('client connection established.');
+        console.log(`WebSocket connected to ${socket.url}`);
     };
 
     socket.onmessage = function (message) {

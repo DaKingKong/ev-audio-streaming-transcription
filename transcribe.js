@@ -1,13 +1,28 @@
 // Note: It takes couple of seconds connecting to Google server, then the transcription will begin
 const WebSocket = require("ws");
+const ngrok = require('ngrok');
+const { parse } = require('url');
 const speech = require('@google-cloud/speech');
-const webPageClient = require('./client');
+const server = require('http').createServer();
+const getClientServer = require('./clientServer');
 
-async function transcribe(keyFilePath) {
-    const wss = new WebSocket.Server({
-        port: 3333
-    });
-    console.log(`Server started on port: ${wss.address().port}`);
+async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '') {
+    if (ngrokUrl === '') {
+        if (ngrokOptions) {
+            ngrokUrl = await ngrok.connect(ngrokOptions);
+        }
+        else {
+            ngrokUrl = await ngrok.connect(port);
+        }
+        console.log(`Server started on : ${ngrokUrl.replace('https', 'wss')}`);
+        console.log(`Client started on : ${ngrokUrl}/client`);
+    }
+    server.listen(port);
+    const audioWSS = new WebSocket.Server({ noServer: true });
+    const clientWSS = new WebSocket.Server({ noServer: true });
+    let wsConnectionPool = [];
+
+    server.on('request', getClientServer(ngrokUrl.split('https://')[1]));
 
     // Imports the Google Cloud client library
     // Creates a client
@@ -25,58 +40,61 @@ async function transcribe(keyFilePath) {
         interimResults: true, // If you want interim results, set this to true
     };
 
-    // Handle Web Socket Connection
-    wss.on("connection", function connection(ws) {
-        console.log("New Connection Initiated");
-        //Create a recognize stream
-        const conferenceRecognizeStream = client
-            .streamingRecognize(request)
-            .on('error', console.error)
-            .on('data', data => {
-                const stringifiedData = JSON.stringify(
-                    {
-                        isFinal: data.results[0].isFinal,
-                        channel: 'conference',
-                        transcription: data.results[0].alternatives[0].transcript
-                    });
-                webPageClient.logToClient(Buffer.from(stringifiedData));
-            });
-        const agentRecognizeStream = client
-            .streamingRecognize(request)
-            .on('error', console.error)
-            .on('data', data => {
-                const stringifiedData = JSON.stringify(
-                    {
-                        isFinal: data.results[0].isFinal,
-                        channel: 'agent',
-                        transcription: data.results[0].alternatives[0].transcript
-                    });
-                webPageClient.logToClient(Buffer.from(stringifiedData));
-            });
+    server.on('upgrade', function upgrade(request, socket, head) {
+        const { pathname } = parse(request.url);
 
+        if (pathname === '/') {
+            audioWSS.handleUpgrade(request, socket, head, function done(ws) {
+                audioWSS.emit('connection', ws, request);
+            });
+        } else if (pathname === '/client-ws') {
+            clientWSS.handleUpgrade(request, socket, head, function done(ws) {
+                clientWSS.emit('connection', ws, request);
+            });
+        } else {
+            socket.destroy();
+        }
+    });
+
+    // Handle Web Socket Connection
+    audioWSS.on("connection", function connection(ws) {
+        console.log("New Connection Initiated");
+        let conferenceRecognizeStream = null;
+        let agentRecognizeStream = null;
         ws.on("message", function incoming(message) {
             const msg = JSON.parse(message);
             switch (msg.event) {
                 case "Connected":
                     console.log(`A new call has connected.`);
-                    const conferenceCallStartedMessage = JSON.stringify(
-                        {
-                            isFinal: true,
-                            channel: 'conference',
-                            transcription: 'conversation started.'
-                        });
-                    const agentCallStartedMessage = JSON.stringify(
-                        {
-                            isFinal: true,
-                            channel: 'agent',
-                            transcription: 'conversation started.'
-                        });
-                    webPageClient.logToClient(Buffer.from(conferenceCallStartedMessage));
-                    webPageClient.logToClient(Buffer.from(agentCallStartedMessage));
                     break;
                 case "Start":
+                    //Create a recognize stream
+                    conferenceRecognizeStream = client
+                        .streamingRecognize(request)
+                        .on('error', console.error)
+                        .on('data', data => {
+                            const stringifiedData = JSON.stringify(
+                                {
+                                    isFinal: data.results[0].isFinal,
+                                    channel: 'conference',
+                                    transcription: data.results[0].alternatives[0].transcript
+                                });
+                            logToClient(Buffer.from(stringifiedData), msg.metadata.callId);
+                        });
+                    agentRecognizeStream = client
+                        .streamingRecognize(request)
+                        .on('error', console.error)
+                        .on('data', data => {
+                            const stringifiedData = JSON.stringify(
+                                {
+                                    isFinal: data.results[0].isFinal,
+                                    channel: 'agent',
+                                    transcription: data.results[0].alternatives[0].transcript
+                                });
+                            logToClient(Buffer.from(stringifiedData), msg.metadata.callId);
+                        });
                     console.log('Starting Media Stream');
-                    callId = msg.metadata.callId;
+                    wsConnectionPool.push({ id: msg.metadata.callId, audioSocket: ws, clientSocket: null });
                     break;
                 case "Media":
                     switch (msg.perspective) {
@@ -90,26 +108,42 @@ async function transcribe(keyFilePath) {
                     break;
                 case "Stop":
                     console.log(`Call Has Ended`);
-                    const conferenceCallEndedMessage = JSON.stringify(
-                        {
-                            isFinal: true,
-                            channel: 'conference',
-                            transcription: 'Call ended. Please refresh this page for next call.'
-                        });
-                    const agentCallEndedMessage = JSON.stringify(
-                        {
-                            isFinal: true,
-                            channel: 'agent',
-                            transcription: 'Call ended. Please refresh this page for next call.'
-                        });
-                    webPageClient.logToClient(Buffer.from(conferenceCallEndedMessage));
-                    webPageClient.logToClient(Buffer.from(agentCallEndedMessage));
                     conferenceRecognizeStream.end()
                     agentRecognizeStream.end()
+                    wsConnectionPool = wsConnectionPool.filter(w => w.audioSocket != ws);
+                    console.log(wsConnectionPool);
                     break;
             }
         });
     });
+
+
+    clientWSS.on('connection', function connection(ws, req) {
+        try {
+            const reqUrl = parse(req.url);
+            const query = new URLSearchParams(reqUrl.query);
+            console.log(`call ${query.get('callId')} client app reaching...`);
+            wsConnectionPool.find(w => w.id == query.get('callId')).clientSocket = ws;
+            ws.on('message', function (message) {
+                console.log(message.toString());
+            });
+
+            ws.on('close', function (connection) {
+                console.log('connection closed');
+            });
+        }
+        catch (e) {
+
+        }
+    });
+
+
+    function logToClient(data, id) {
+        const targetPool = wsConnectionPool.find(w => w.id == id);
+        if (targetPool && targetPool.clientSocket) {
+            targetPool.clientSocket.send(data);
+        }
+    }
 }
 
 exports.transcribe = transcribe;
