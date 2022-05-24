@@ -6,6 +6,12 @@ const speech = require('@google-cloud/speech');
 const server = require('http').createServer();
 
 async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '') {
+
+
+    await server.listen(port);
+    console.log(`Server started on port ${port}` )
+
+
     if (ngrokUrl === '') {
         if (ngrokOptions) {
             ngrokUrl = await ngrok.connect(ngrokOptions);
@@ -13,10 +19,12 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
         else {
             ngrokUrl = await ngrok.connect(port);
         }
-        console.log(`Server started on : ${ngrokUrl.replace('https', 'wss')}`);
-        console.log(`Client started on : ${ngrokUrl}/client`);
+        console.log(`Started ngrok tunnel session on ${ngrokUrl}`);
     }
-    server.listen(port);
+
+    console.log(`Server URI: ${ngrokUrl.replace('https', 'wss')}`);
+    console.log(`Client URI: ${ngrokUrl}/client`);
+
     const audioWSS = new WebSocket.Server({ noServer: true });
     const clientWSS = new WebSocket.Server({ noServer: true });
     let wsConnectionPool = [];
