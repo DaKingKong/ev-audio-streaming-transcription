@@ -4,9 +4,14 @@ const ngrok = require('ngrok');
 const { parse } = require('url');
 const speech = require('@google-cloud/speech');
 const server = require('http').createServer();
-const getClientServer = require('./clientServer');
 
 async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '') {
+
+
+    await server.listen(port);
+    console.log(`Server started on port ${port}` )
+
+
     if (ngrokUrl === '') {
         if (ngrokOptions) {
             ngrokUrl = await ngrok.connect(ngrokOptions);
@@ -14,15 +19,27 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
         else {
             ngrokUrl = await ngrok.connect(port);
         }
-        console.log(`Server started on : ${ngrokUrl.replace('https', 'wss')}`);
-        console.log(`Client started on : ${ngrokUrl}/client`);
+        console.log(`Started ngrok tunnel session on ${ngrokUrl}`);
     }
-    server.listen(port);
+
+    console.log(`Server URI: ${ngrokUrl.replace('https', 'wss')}`);
+    console.log(`Client URI: ${ngrokUrl}/client`);
+
     const audioWSS = new WebSocket.Server({ noServer: true });
     const clientWSS = new WebSocket.Server({ noServer: true });
     let wsConnectionPool = [];
 
-    server.on('request', getClientServer(ngrokUrl.split('https://')[1]));
+    // server.on('request', getClientServer(ngrokUrl.split('https://')[1]));
+    const fs = require('fs');
+    const path = require('path');
+    const express = require('express');
+    const app = express();
+
+    app.get('/client', function (req, res) {
+        res.sendFile(path.join(__dirname, 'client.html'));
+    });
+
+    server.on('request', app);
 
     // Imports the Google Cloud client library
     // Creates a client
@@ -93,7 +110,7 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
                                 });
                             logToClient(Buffer.from(stringifiedData), msg.metadata.callId);
                         });
-                    console.log('Starting Media Stream');
+                    console.log(`${msg.metadata.callId}: Starting Media Stream`);
                     wsConnectionPool.push({ id: msg.metadata.callId, audioSocket: ws, clientSocket: null });
                     break;
                 case "Media":
@@ -108,8 +125,9 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
                     break;
                 case "Stop":
                     console.log(`Call Has Ended`);
-                    conferenceRecognizeStream.end()
-                    agentRecognizeStream.end()
+                    // do not want to break if there was no Start and streams were not created
+                    if (conferenceRecognizeStream) conferenceRecognizeStream.end()
+                    if (agentRecognizeStream) agentRecognizeStream.end()
                     wsConnectionPool = wsConnectionPool.filter(w => w.audioSocket != ws);
                     console.log(wsConnectionPool);
                     break;

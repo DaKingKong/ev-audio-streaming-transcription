@@ -63,7 +63,8 @@
     var conferenceContent = document.getElementById('conference-content');
     var agentTranscriptions = [];
     var conferenceTranscriptions = [];
-    var socket = new WebSocket("[wsServerUrl]");
+//    var socket = new WebSocket("[wsServerUrl]");
+    var socket = new WebSocket("wss://" + location.host + "/client-ws" + location.search);
     console.log(`WebSocket connecting...`);
     socket.onopen = function () {
         socket.send('client connection established.');

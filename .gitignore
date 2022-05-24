@@ -105,3 +105,8 @@ dist
 
 # test files
 test.js
+smooth-calling-345922-060c7eb0ab49.json
+.vscode/
+
+package-lock.json
+.vscode/launch.json
