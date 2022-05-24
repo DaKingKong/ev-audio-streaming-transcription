@@ -110,7 +110,7 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
                                 });
                             logToClient(Buffer.from(stringifiedData), msg.metadata.callId);
                         });
-                    console.log('Starting Media Stream');
+                    console.log(`${msg.metadata.callId}: Starting Media Stream`);
                     wsConnectionPool.push({ id: msg.metadata.callId, audioSocket: ws, clientSocket: null });
                     break;
                 case "Media":
@@ -125,8 +125,9 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
                     break;
                 case "Stop":
                     console.log(`Call Has Ended`);
-                    conferenceRecognizeStream.end()
-                    agentRecognizeStream.end()
+                    // do not want to break if there was no Start and streams were not created
+                    if (conferenceRecognizeStream) conferenceRecognizeStream.end()
+                    if (agentRecognizeStream) agentRecognizeStream.end()
                     wsConnectionPool = wsConnectionPool.filter(w => w.audioSocket != ws);
                     console.log(wsConnectionPool);
                     break;
