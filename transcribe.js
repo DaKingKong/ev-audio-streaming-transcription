@@ -4,7 +4,6 @@ const ngrok = require('ngrok');
 const { parse } = require('url');
 const speech = require('@google-cloud/speech');
 const server = require('http').createServer();
-const getClientServer = require('./clientServer');
 
 async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '') {
     if (ngrokUrl === '') {
@@ -22,7 +21,17 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
     const clientWSS = new WebSocket.Server({ noServer: true });
     let wsConnectionPool = [];
 
-    server.on('request', getClientServer(ngrokUrl.split('https://')[1]));
+    // server.on('request', getClientServer(ngrokUrl.split('https://')[1]));
+    const fs = require('fs');
+    const path = require('path');
+    const express = require('express');
+    const app = express();
+
+    app.get('/client', function (req, res) {
+        res.sendFile(path.join(__dirname, 'client.html'));
+    });
+
+    server.on('request', app);
 
     // Imports the Google Cloud client library
     // Creates a client
