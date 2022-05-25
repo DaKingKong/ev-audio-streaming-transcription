@@ -53,23 +53,7 @@ Client started on: https://xxxx.ngrok.io/client  // this is your {agentScriptUrl
    - Log in to Engage Voice -> Admin
    - Agent Tools -> Script Designer -> (optional) Create a new group if needed
    - Add a new script -> In Queue/Campaign Assignments, tick on your Queue/Campaign -> Save
-   - Open Script Studio -> From left panel, drag a Javascript and a Page component into the view -> Connect as from Start ---> Javascript ---> Page ---> End
-   - Hover on Javascript and Edit, paste below code and save.
-```javascript
-async function waitForSeconds(sec){
-   await sleep(sec * 1000);
-   return goTo("page_0");
-}
-
-
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-  
-waitForSeconds(5);
-```
+   - Open Script Studio -> From left panel, drag a Page component into the view -> Connect as from Start ---> Page ---> End
    - Hover on Page and Edit -> Add "iFrame" element and adjust the size -> Edit element and fill Resource Url with `{agentScriptUrl}` with `?callId={{model.call.uii}}`. so `https://xxxx.ngrok.io/client?callId={{model.call.uii}}` -> Save
 
 5. Now we are all set. Call the number of your Queue and transcriptions should come up.

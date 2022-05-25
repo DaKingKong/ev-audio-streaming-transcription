@@ -9,7 +9,7 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
 
 
     await server.listen(port);
-    console.log(`Server started on port ${port}` )
+    console.log(`Server started on port ${port}`)
 
 
     if (ngrokUrl === '') {
@@ -111,7 +111,12 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
                             logToClient(Buffer.from(stringifiedData), msg.metadata.callId);
                         });
                     console.log(`${msg.metadata.callId}: Starting Media Stream`);
-                    wsConnectionPool.push({ id: msg.metadata.callId, audioSocket: ws, clientSocket: null });
+
+                    // wsConnectionPool.push({ id: msg.metadata.callId, audioSocket: ws, clientSocket: null });
+                    const target = wsConnectionPool.find(w => w.id == msg.metadata.callId);
+                    if (target) target.audioSocket = ws;
+                    else wsConnectionPool.push({ id: msg.metadata.callId, audioSocket: ws, clientSocket: null });
+
                     break;
                 case "Media":
                     switch (msg.perspective) {
@@ -141,7 +146,12 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
             const reqUrl = parse(req.url);
             const query = new URLSearchParams(reqUrl.query);
             console.log(`call ${query.get('callId')} client app reaching...`);
-            wsConnectionPool.find(w => w.id == query.get('callId')).clientSocket = ws;
+
+            // wsConnectionPool.find(w => w.id == query.get('callId')).clientSocket = ws;
+            const target = wsConnectionPool.find(w => w.id == query.get('callId'))
+            if (target) target.clientSocket = ws;
+            else wsConnectionPool.push({ id: query.get('callId'), audioSocket: null, clientSocket: ws });
+
             ws.on('message', function (message) {
                 console.log(message.toString());
             });
