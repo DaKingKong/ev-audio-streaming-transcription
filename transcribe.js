@@ -158,6 +158,7 @@ async function transcribe(port, keyFilePath, ngrokOptions = null, ngrokUrl = '')
 
             ws.on('close', function (connection) {
                 console.log('connection closed');
+                wsConnectionPool = wsConnectionPool.filter(w => w.clientSocket != ws);
             });
         }
         catch (e) {
